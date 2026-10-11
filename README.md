@@ -199,13 +199,22 @@ port `button0`/`button1` stay at the defaults, which is what the table above tar
 
 ### Building from source
 
-The core is a static archive that `sf2000_multicore` links into the final `.sf2k`:
+The core is a static archive that `sf2000_multicore` links into the final `.sf2k`.
+Both invocations need `MULTICORE_SRC`, because the core's Makefile needs `libretro.h`
+and `deimos.h` from that tree, and `sf2000_multicore` is not vendored here:
 
 ```bash
+# 1. build the core archive
 make -C cores/butterscotch MULTICORE_SRC=/path/to/sf2000_multicore
-make -C /path/to/sf2000_multicore \
+
+# 2. link it into a .sf2k
+make -C /path/to/sf2000_multicore MULTICORE_SRC=/path/to/sf2000_multicore \
      CORE=$PWD/cores/butterscotch CONSOLE=butterscotch FROGGY_TYPE=GB300V2
 ```
+
+`MULTICORE_SRC` defaults to `../sf2000_multicore` next to the repo, which is only
+correct if you cloned the loader as a sibling directory. If you cannot find it, the
+build stops with an explicit error rather than a missing-header cascade.
 
 **`-march` must stay plain `mips32`.** The JZ4775 has no MIPS32r2 bit-manipulation
 unit: `seb`, `seh`, `ins`, `ext`, `wsbh` and `rotr` raise ExcCode 10 and kill the core.
@@ -213,12 +222,35 @@ unit: `seb`, `seh`, `ins`, `ext`, `wsbh` and `rotr` raise ExcCode 10 and kill th
 `-msoft-float`. `-mno-abicalls -fno-pic -G0` make firmware calls resolve to absolute
 addresses from the linker script with no GOT.
 
-The `RENDERER=sw` software renderer is also buildable on a desktop host, which is the
-only practical way to diff it against the GL reference output:
+### Desktop validation (work in progress)
+
+The `RENDERER=sw` software renderer also builds on a desktop host, which is the only way
+to exercise it without hardware in the loop. The Makefile builds in-tree, so run it from
+the repository root:
 
 ```bash
 make RENDERER=sw BACKEND=sdl2
+./build/butterscotch game.unx --renderer software
 ```
+
+`RENDERER=sw` only *compiles* the renderer in; you still need `--renderer software` at
+runtime, otherwise `gfx` defaults to GL and the software path is never taken. On a host
+build the renderer ends a frame through `tools/sw_present_sink.c`, which writes PNGs
+controlled by these environment variables:
+
+| Variable | Meaning |
+|---|---|
+| `SW_SHOT_PREFIX` | output filename prefix (default `sw`) |
+| `SW_SHOT_MAX` | stop after N frames (default `0` = unlimited) |
+
+The console build is unaffected: `PLATFORM_SF2000` resolves the present symbol to
+`sf2000_present_frame()` in the firmware layer, so the host sink is excluded there.
+
+> [!WARNING]
+> Desktop output is **not yet verified as correct**. As of this release the host path
+> emits correctly sized 320x240 frames, but they are fully black, while the GL reference
+> at 640x480 renders real content from the same rooms. Treat the desktop build as a
+> compile-and-run harness only. Validate rendering on real hardware.
 
 ### Troubleshooting
 
@@ -229,7 +261,7 @@ make RENDERER=sw BACKEND=sdl2
 | 1px strokes missing from glyphs | Same as above — needs the area-coverage downscale, not nearest-neighbour. |
 | Nothing appears except backgrounds | `ATLAS.BIN` / `ATLAS.RGBA4444` missing or stale. Re-run `tools/pack_assets.py`. |
 | Music silent | `*.ogg` files not copied to `ROMS/butterscotch/`. |
-| Menu navigation does nothing | The device is reporting a joystick but the game queries one that isn't connected; check `j_ch` handling in `src/sf2000/platform_sf2000.c`. |
+| Menus do not respond to A / arrows | Known issue. `obj_time_Step_1` calls `trophy_init()` every frame; unless it reports initialised, the step event returns early and `control_update()` never runs, so `control_check_pressed()` stays false and nothing is selectable. Being tracked. |
 
 ## Building Butterscotch
 

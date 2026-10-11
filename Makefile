@@ -218,6 +218,12 @@ DEFINES += $(DEFINE)ENABLE_SW_RENDERER
 SRCS += $(wildcard src/sw_renderer/*.c)
 INCLUDES += $(INC)src/sw_renderer
 HEADERS += $(wildcard src/sw_renderer/*.h)
+# SwRenderer_present ends a frame through sw_renderer_present_sink().  On the console
+# that is sf2000_present_frame() from the firmware layer, so the sink is host-only and
+# must not be pulled in for a PLATFORM_SF2000 build.
+ifndef PLATFORM_SF2000
+SRCS += tools/sw_present_sink.c
+endif
 endif
 
 ifdef DISABLE_WAD14
