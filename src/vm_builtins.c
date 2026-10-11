@@ -15,7 +15,6 @@
 #include "random.h"
 
 #include "stdio_compat.h"
-#include <stdint.h>
 #include <stdlib.h>
 #include <float.h>
 #include "string_compat.h"
