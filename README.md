@@ -1,173 +1,93 @@
 <div align="center">
-<img width="256" height="256" alt="Butterscotch Logo" src="https://github.com/user-attachments/assets/ef8bdd5c-d407-4b3c-a4d5-07b25e8bbc70" />
+
+# 🥧 FroggyTale
+
+**Undertale on the GB300V2 / SF2000**
+
 </div>
 
-<h1 align="center">🥧 Butterscotch 🥧</h1>
+---
 
-<!-- Badges, about the GitHub repository itself -->
-<p align="center">
-<a href="https://github.com/ButterscotchRunner/CompatibilityList"><img src="https://img.shields.io/badge/butterscotch-compatibility_list-green"></a>
-<a href="https://discord.gg/2gQR7t3WJR"><img src="https://img.shields.io/discord/1406856655920168971?color=5865F2&logo=discord&logoColor=white&label=discord"></a>
-</p>
+A port of [Butterscotch](https://github.com/ButterscotchRunner/Butterscotch) to the
+Ingenic JZ4775 handhelds — **GB300V2** and **SF2000**.
 
-> [!IMPORTANT]
-> Butterscotch may have quirks that the original GameMaker: Studio runner may not have!
+Those consoles have **no GPU and no OpenGL**. This port supplies a software renderer
+that draws straight into the 320x240 RGB565 panel, plus the platform layer for firmware
+input, video, audio and boot-time loading.
 
-When you create a game in GameMaker: Studio and export it, GameMaker: Studio exports the game code as bytecode instead of native compiled code, and that bytecode is compatible with any other GameMaker: Studio runner (also known as YoYo runner), as long as they have matching GameMaker: Studio versions. This is similar to how Java applications work.
+Verified against **Undertale 1.08** (WAD version 16 / GameMaker: Studio 1.4.1767+).
 
-This is how projects such as [Droidtale](https://mrpowergamerbr.com/projects/droidtale) (which was also made by yours truly) can exist. We exploit that GameMaker: Studio games compile to bytecode, which means they can be ran on *any* platform that has an official runner for it!
+---
 
-Ever since I created Droidtale 10+ years ago, I had that lingering thought in my mind... If GameMaker games use bytecode, what prevents us from creating our *own* runner? And if we can write our *own* runner, what prevents us from porting GameMaker: Studio games to other platforms?
+## Status
 
-And that's where Butterscotch comes in! Butterscotch is an open source re-implementation of GameMaker: Studio's runner in C.
+| Area | State |
+|---|---|
+| Core boots, loads the WAD, renders the game | Works |
+| Background music from SD card | Works |
+| Text rendering at 320x240 | Works |
+| Desktop build of the software renderer | Compiles and runs, **output not yet verified** |
+| **Menu navigation (A / arrows)** | **Broken — see [Troubleshooting](#troubleshooting)** |
 
-## Game Compatibility
+Read the broken row before you install: you will get in-game, but you cannot currently
+move the cursor in menus.
 
-Butterscotch's goal is to be able to have all bytecode compiled games playable. The majority of GameMaker: Studio games already get in game and some are even playable from start to finish! For a more complete list of working games, check the [Compatibility List.](https://github.com/ButterscotchRunner/CompatibilityList)
+---
 
-Butterscotch supports the following WAD versions:
+## Requirements
 
-* WAD Version 8 (GameMaker: Studio 1.0.198+)
-* WAD Version 9 (GameMaker: Studio 1.0.527+)
-* WAD Version 10 (GameMaker: Studio 1.1.609+)
-* WAD Version 11 (GameMaker: Studio 1.1.754+)
-* WAD Version 12 (GameMaker: Studio 1.1.867+)
-* WAD Version 13 (GameMaker: Studio 1.1.917+)
-* WAD Version 14 (GameMaker: Studio 1.4.1464+)
-* WAD Version 15 (GameMaker: Studio 1.4.1675+)
-* WAD Version 16 (GameMaker: Studio 1.4.1767+)
-* WAD Version 17 (GameMaker: Studio 2.2+)
+* A **GB300V2** or **SF2000** with a FAT-formatted SD card.
+* **[`sf2000_multicore`](https://github.com/Trademarked69/sf2000_multicore)** — the
+  loader that wraps the core into a `.sf2k`. Not vendored here.
+* **Your own copy of Undertale.** The WAD is Toby Fox's copyrighted data and is
+  deliberately not distributed with this project.
 
-Other modding tools, such as UndertaleModTool, calls it "bytecode version" instead of "WAD version". We decided to go with WAD version instead because there are GameMaker: Studio versions (WAD version 6 and 7) that DO NOT use bytecode altogether, so calling it "bytecode version" is not quite correct, and because that's what the YoYo Runner calls it under the hood.
+---
 
-However, that doesn't mean that a game that uses a compatible version WILL run! The bytecode support is still a WIP, and Butterscotch may have quirks that the original GameMaker: Studio runner may not have.
+## Installation
 
-Of course, some games won't run! Some games aren't VM compiled, such as:
+### 1. Get the core
 
-* Games compiled with YYC, because they use native code instead of bytecode. (Ex: Forager, Rivals of Aether)
-* Games compiled with the new [GMRT](https://github.com/YoYoGames/GMRT-Beta/tree/main), because they use native code instead of bytecode.
-* Games before GameMaker: Studio 1.0.198 (pre-WAD version 8) because they use raw GML code interpreted on load.
+Download `butterscotch.sf2k` from the
+[Releases page](https://github.com/Synaps33/FroggyTale/releases).
 
-## Supported Platforms
+### 2. Build the texture atlas
 
-* Windows
-* macOS
-* Web
-* PlayStation 2
-* PlayStation 3
-* PlayStation Vita
-* Nintendo Switch
-* ...and maybe more in the future!
+The console has no GPU, so textures cannot be unpacked at runtime. Prebuild them into an
+atlas from your own copy of the WAD:
 
-Butterscotch can be ported to about any console that has the processing power to run it! Butterscotch has already been ported to many consoles such as the Xbox 360, Wii, 3DS, and more!
+```bash
+python3 tools/pack_assets.py --datawin /path/to/game.unx --out build
+```
 
-Additionally, any platform with reasonably complete C and POSIX conformance should work, the following have been tested.
-* Linux with glibc as old as about ~1995
-* FreeBSD as old as 2.2.8
-* OpenBSD
-* NetBSD
-* Haiku
-* Solaris/illumos (OpenIndiana tested working)
+This takes a few seconds and writes:
 
-The following backends are available for desktop platforms (Windows and POSIX systems).
-* GLFW 2
-* GLFW 3
-* SDL 1.2
-* SDL 2
-* SDL 3
-* AppKit (macOS only)
-
-The following compilers have been tested to successfully build Butterscotch, older versions may work but are untested.
-* GCC 2.7 and up in C++ mode, and 3.0 and up in C99 mode
-* Clang 1.1 and up
-* TinyCC 0.9.27 and up
-* MSVC 4.0 and up
-
-## Download Butterscotch
-
-Below are direct links to download the latest auto-build of Butterscotch for your platform.
-
-### Desktop
-
-| OS | x86_64 | i386 | arm64 | armhf | PowerPC | PowerPC64 | PowerPC64 little-endian | RISC-V 64 | LoongArch64 | MIPS | MIPS little-endian | MIPS64 | MIPS64 little-endian |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| Windows | [x86_64](https://nightly.link/ButterscotchRunner/Butterscotch/workflows/build/main/butterscotch-windows-x86_64.zip) | [i486](https://nightly.link/ButterscotchRunner/Butterscotch/workflows/build/main/butterscotch-windows-i486.zip) | [arm64](https://nightly.link/ButterscotchRunner/Butterscotch/workflows/build/main/butterscotch-sdl2-windows-arm64.zip) | [armv7](https://nightly.link/ButterscotchRunner/Butterscotch/workflows/build/main/butterscotch-sdl2-windows-armv7.zip) | | | | | | | | | |
-| macOS | [x86_64](https://nightly.link/ButterscotchRunner/Butterscotch/workflows/build/main/butterscotch-appkit-macos-x86_64.zip) | | [arm64](https://nightly.link/ButterscotchRunner/Butterscotch/workflows/build/main/butterscotch-appkit-macos-arm64.zip) | | | | | | | | | | |
-| Linux | [x86_64](https://nightly.link/ButterscotchRunner/Butterscotch/workflows/build/main/Butterscotch-Linux-amd64.zip) | [i486](https://nightly.link/ButterscotchRunner/Butterscotch/workflows/build/main/Butterscotch-Linux-i486.zip) | [aarch64](https://nightly.link/ButterscotchRunner/Butterscotch/workflows/build/main/Butterscotch-Linux-aarch64.zip) | [arm](https://nightly.link/ButterscotchRunner/Butterscotch/workflows/build/main/Butterscotch-Linux-arm.zip) | [powerpc](https://nightly.link/ButterscotchRunner/Butterscotch/workflows/build/main/Butterscotch-Linux-powerpc.zip) | [powerpc64](https://nightly.link/ButterscotchRunner/Butterscotch/workflows/build/main/Butterscotch-Linux-powerpc64.zip) | [powerpc64le](https://nightly.link/ButterscotchRunner/Butterscotch/workflows/build/main/Butterscotch-Linux-powerpc64le.zip) | [riscv64](https://nightly.link/ButterscotchRunner/Butterscotch/workflows/build/main/Butterscotch-Linux-riscv.zip) | [loongarch64](https://nightly.link/ButterscotchRunner/Butterscotch/workflows/build/main/Butterscotch-Linux-loongarch64.zip) | [mips](https://nightly.link/ButterscotchRunner/Butterscotch/workflows/build/main/Butterscotch-Linux-mips.zip) | [mipsel](https://nightly.link/ButterscotchRunner/Butterscotch/workflows/build/main/Butterscotch-Linux-mipsel.zip) | [mips64](https://nightly.link/ButterscotchRunner/Butterscotch/workflows/build/main/Butterscotch-Linux-mips64.zip) | [mips64el](https://nightly.link/ButterscotchRunner/Butterscotch/workflows/build/main/Butterscotch-Linux-mips64el.zip) |
-| FreeBSD 14.0 | [x86_64](https://nightly.link/ButterscotchRunner/Butterscotch/workflows/build/main/Butterscotch-FreeBSD-amd64.zip) | [i486](https://nightly.link/ButterscotchRunner/Butterscotch/workflows/build/main/Butterscotch-FreeBSD-i486.zip) | [aarch64](https://nightly.link/ButterscotchRunner/Butterscotch/workflows/build/main/Butterscotch-FreeBSD-aarch64.zip) | [arm](https://nightly.link/ButterscotchRunner/Butterscotch/workflows/build/main/Butterscotch-FreeBSD-arm.zip) | | [powerpc64](https://nightly.link/ButterscotchRunner/Butterscotch/workflows/build/main/Butterscotch-FreeBSD-powerpc64.zip) | [powerpc64le](https://nightly.link/ButterscotchRunner/Butterscotch/workflows/build/main/Butterscotch-FreeBSD-powerpc64le.zip) | [riscv64](https://nightly.link/ButterscotchRunner/Butterscotch/workflows/build/main/Butterscotch-FreeBSD-riscv.zip) | | | | | |
-| OpenBSD 7.8 | [x86_64](https://nightly.link/ButterscotchRunner/Butterscotch/workflows/build/main/Butterscotch-OpenBSD-amd64.zip) | [i486](https://nightly.link/ButterscotchRunner/Butterscotch/workflows/build/main/Butterscotch-OpenBSD-i486.zip) | [aarch64](https://nightly.link/ButterscotchRunner/Butterscotch/workflows/build/main/Butterscotch-OpenBSD-aarch64.zip) | [arm](https://nightly.link/ButterscotchRunner/Butterscotch/workflows/build/main/Butterscotch-OpenBSD-arm.zip) | [powerpc](https://nightly.link/ButterscotchRunner/Butterscotch/workflows/build/main/Butterscotch-OpenBSD-powerpc.zip) | [powerpc64](https://nightly.link/ButterscotchRunner/Butterscotch/workflows/build/main/Butterscotch-OpenBSD-powerpc64.zip) | | [riscv64](https://nightly.link/ButterscotchRunner/Butterscotch/workflows/build/main/Butterscotch-OpenBSD-riscv.zip) | | | | [mips64](https://nightly.link/ButterscotchRunner/Butterscotch/workflows/build/main/Butterscotch-OpenBSD-mips64.zip) | [mips64el](https://nightly.link/ButterscotchRunner/Butterscotch/workflows/build/main/Butterscotch-OpenBSD-mips64el.zip) |
-| NetBSD 10.1 | [x86_64](https://nightly.link/ButterscotchRunner/Butterscotch/workflows/build/main/Butterscotch-NetBSD-amd64.zip) | [i486](https://nightly.link/ButterscotchRunner/Butterscotch/workflows/build/main/Butterscotch-NetBSD-i486.zip) | [aarch64](https://nightly.link/ButterscotchRunner/Butterscotch/workflows/build/main/Butterscotch-NetBSD-aarch64.zip) | [arm](https://nightly.link/ButterscotchRunner/Butterscotch/workflows/build/main/Butterscotch-NetBSD-arm.zip) | | | | | | [mips](https://nightly.link/ButterscotchRunner/Butterscotch/workflows/build/main/Butterscotch-NetBSD-mips.zip) | [mipsel](https://nightly.link/ButterscotchRunner/Butterscotch/workflows/build/main/Butterscotch-NetBSD-mipsel.zip) | | |
-| Haiku | [x86_64](https://nightly.link/ButterscotchRunner/Butterscotch/workflows/build/main/butterscotch-sdl2-haiku-x86-64.zip) | | | | | | | | | | | | |
-
-All desktop builds use SDL2, with the exception of Mac OS using AppKit and i486 Windows using SDL 1.2.
-
-All RISC architecture (ARM, MIPS, PowerPC, RISC-V) builds require hardware floating-point support.
-
-### Consoles
-
-| Platform | Download | Notes |
+| File | Size | Contents |
 |---|---|---|
-| PlayStation 2 | [butterscotch-ps2.zip](https://nightly.link/ButterscotchRunner/Butterscotch/workflows/build/main/butterscotch-ps2.zip) | All WAD versions. Has worse performance compared to WAD-specific ELFs due to more code bloat on the interpreter hot path. ELF executable to be used with the [ISO generator](https://butterscotch.mrpowergamerbr.com/). |
-| PlayStation 2 | [butterscotch-ps2-wad14.zip](https://nightly.link/ButterscotchRunner/Butterscotch/workflows/build/main/butterscotch-ps2-wad14.zip) | WAD 14 only. ELF executable to be used with the [ISO generator](https://butterscotch.mrpowergamerbr.com/). |
-| PlayStation 2 | [butterscotch-ps2-wad16.zip](https://nightly.link/ButterscotchRunner/Butterscotch/workflows/build/main/butterscotch-ps2-wad16.zip) | WAD 16 only. ELF executable to be used with the [ISO generator](https://butterscotch.mrpowergamerbr.com/). |
-| PlayStation 2 | [butterscotch-ps2-wad17.zip](https://nightly.link/ButterscotchRunner/Butterscotch/workflows/build/main/butterscotch-ps2-wad17.zip) | WAD 17 only. ELF executable to be used with the [ISO generator](https://butterscotch.mrpowergamerbr.com/). |
-| PlayStation 3 | [butterscotch-ps3.zip](https://nightly.link/ButterscotchRunner/Butterscotch/workflows/build/main/butterscotch-ps3.zip) | To be used with the [preprocessor](https://github.com/ButterscotchRunner/ButterscotchPreprocessor). |
-| PlayStation Vita | [butterscotch-vita.zip](https://nightly.link/ButterscotchRunner/Butterscotch/workflows/build/main/butterscotch-vita.zip) | Place data.win in `ux0:/data/butterscotch/` directory. Requires `libshacccg.suprx` to be installed in `ur0:/data/` |
-| Nintendo Switch | [butterscotch-switch.zip](https://nightly.link/ButterscotchRunner/Butterscotch/workflows/build/main/butterscotch-switch.zip) | Place data.win in `sdmc:/switch/butterscotch/` directory OR compile from source with data.win file in `<cmake build dir>/romfs` directory (requires devkitPro). |
-| GB300V2 / SF2000 | [Releases](https://github.com/Synaps33/FroggyTale/releases) | No-GPU handheld. Ships a prebuilt `.sf2k` core. See [GB300V2 / SF2000](#gb300v2--sf2000) below. |
+| `build/ATLAS.BIN` | ~0.2 MB | index, one record per source rect |
+| `build/ATLAS.RGBA4444` | ~51 MB | the pixels |
 
+Useful flags: `--atlas-cap N` box-filters textures larger than `N` pixels,
+`--report out.json` dumps a breakdown.
 
-### Other
+### 3. Install to the card
 
-| Platform | Download | Notes |
-| -------- | -------- | ----- |
-| WebAssembly | [butterscotch-web.zip](https://nightly.link/ButterscotchRunner/Butterscotch/workflows/build/main/butterscotch-web.zip) | [Play online](https://butterscotch.mrpowergamerbr.com/web/) |
-| Android | [butterscotch-android.zip](https://nightly.link/ButterscotchRunner/Butterscotch/workflows/build/main/butterscotch-android.zip) |
+```bash
+SD_ROOT=/media/<your-card> ./tools/install_to_card.sh
+```
 
-## Community Ports
+The script refuses to run unless `SD_ROOT` is a real FAT mount point, is idempotent
+(skips files that already match), and verifies every file after copying. Override any
+source path if your layout differs:
 
-* [Xbox 360 (Butterscotch-360)](https://github.com/ceilingtilefan/Butterscotch-360) by @ceilingtilefan
-* [3DS, Wii and Wii U (Cinnamon)](https://github.com/Project-Sunshine-Native/cinnamon) by @casrielasriel, @grayforz24682
+```bash
+SD_ROOT=/media/<card> \
+WAD_SRC=/path/to/game.unx \
+CORE_SRC=./butterscotch.sf2k \
+  ./tools/install_to_card.sh
+```
 
-## GB300V2 / SF2000
-
-Port for the Ingenic JZ4775 handhelds (GB300V2, SF2000). These devices have **no GPU
-and no OpenGL**, so this port ships a software renderer that draws straight into the
-320x240 RGB565 framebuffer. Undertale's GML coordinates, sprite sizes and cursor steps
-are all hardcoded for 640x480, so it downscales 2:1 on the fly.
-
-Verified against Undertale 1.08 (WAD version 16).
-
-### Requirements
-
-* A GB300V2 or SF2000 with a FAT-formatted SD card
-* `sf2000_multicore` (the loader/frontend that turns the core into a `.sf2k`) — not vendored here
-* **Your own copy of the game.** The WAD is Toby Fox's copyrighted data and is deliberately
-  not distributed with this project. `tools/install_to_card.sh` expects it at `assets/game.unx`.
-
-### Installation
-
-1. Grab `butterscotch.sf2k` from the [Releases](https://github.com/Synaps33/FroggyTale/releases) page.
-2. Point the asset packer at your copy of the WAD.
-3. Build the texture atlas, which is required because the handheld has no GPU to unpack
-   textures at runtime:
-
-   ```bash
-   python3 tools/pack_assets.py --datawin /path/to/game.unx --out build
-   ```
-
-   This writes `build/ATLAS.BIN` (~0.2 MB, one record per source rect) and
-   `build/ATLAS.RGBA4444` (~51 MB, the pixels). It takes a few seconds on a desktop.
-   `--atlas-cap` boxes textures larger than a given pixel size; `--report` dumps a JSON
-   breakdown.
-4. Install everything onto the card. The script verifies the card is a real FAT mount
-   before writing, is idempotent, and re-checks every file afterwards:
-
-   ```bash
-   SD_ROOT=/media/<your-card> ./tools/install_to_card.sh
-   ```
-
-This produces:
+### Resulting card layout
 
 ```
 <card>/system/Deimos/cores/butterscotch.sf2k   the core
@@ -181,10 +101,12 @@ This produces:
 
 Eject the card, boot the handheld, and launch **Undertale** from the main menu.
 
-### Controls
+---
 
-Buttons are read from the firmware joypad registers and fanned out to both the GameMaker
-keyboard and gamepad APIs, so titles written against either path work.
+## Controls
+
+Buttons are read from the firmware joypad registers and fanned out to **both** the
+GameMaker keyboard and gamepad APIs, so games written against either path respond.
 
 | Action | Buttons |
 |---|---|
@@ -194,14 +116,39 @@ keyboard and gamepad APIs, so titles written against either path work.
 | Move / aim | D-pad |
 
 `R` doubles as confirm and `L` as cancel so both shoulder triggers work one-handed.
-Undertale remaps its own confirm/cancel internally for Japanese PS4/Vita builds; on this
-port `button0`/`button1` stay at the defaults, which is what the table above targets.
+Firmware bitmasks are read directly: `A=0x2000`, `B=0x4000`, `X=0x0400`, `Y=0x0800`,
+`L=0x1000`, `R=0x8000`, `START=0x0008`, `SELECT=0x0001`, D-pad `0x0010/0x0040/0x0080/0x0020`.
 
-### Building from source
+---
+
+## How the rendering works
+
+Undertale is authored for **640x480**: GML coordinates, sprite sizes and cursor step
+increments are all hardcoded for that resolution. The panel is **320x240**.
+
+This port renders into a 320x240 framebuffer and scales 2:1 on the fly. Two details
+matter, both learned the hard way:
+
+**Area-coverage downscaling, not nearest-neighbour.** Plain nearest-neighbour drops every
+odd coordinate, which deletes 1px strokes — the dots on `i`, the crossbars on `t` and
+`e`. The renderer instead averages a 2x2 block through a 64-entry perceptual gamma LUT
+(`g_downscaleLut` in `src/sw_renderer/sw_renderer.c`).
+
+**No dilation.** A morphological dilation pass would also restore the missing pixels, but
+Undertale's fonts (`fnt_maintext`, `fnt_small`) have exactly 1px gaps between letters.
+Any dilation strong enough to fatten a 1px stroke also closes that gap, fusing words into
+solid white bars. Coverage filtering keeps the strokes *and* the spacing.
+
+`blendOn` is also driven purely by `sw->blendEnable`; gating it on `gAlpha < 255` silently
+disables blending of glyph anti-aliasing against the background.
+
+---
+
+## Building from source
 
 The core is a static archive that `sf2000_multicore` links into the final `.sf2k`.
-Both invocations need `MULTICORE_SRC`, because the core's Makefile needs `libretro.h`
-and `deimos.h` from that tree, and `sf2000_multicore` is not vendored here:
+Both steps need `MULTICORE_SRC`, because the core's Makefile pulls `libretro.h` and
+`deimos.h` from that tree:
 
 ```bash
 # 1. build the core archive
@@ -212,226 +159,99 @@ make -C /path/to/sf2000_multicore MULTICORE_SRC=/path/to/sf2000_multicore \
      CORE=$PWD/cores/butterscotch CONSOLE=butterscotch FROGGY_TYPE=GB300V2
 ```
 
-`MULTICORE_SRC` defaults to `../sf2000_multicore` next to the repo, which is only
-correct if you cloned the loader as a sibling directory. If you cannot find it, the
-build stops with an explicit error rather than a missing-header cascade.
+`MULTICORE_SRC` defaults to `../sf2000_multicore` next to this repo, which is only correct
+if you cloned the loader as a sibling directory. Otherwise the build stops with an
+explicit error rather than a cascade of missing headers.
 
-**`-march` must stay plain `mips32`.** The JZ4775 has no MIPS32r2 bit-manipulation
-unit: `seb`, `seh`, `ins`, `ext`, `wsbh` and `rotr` raise ExcCode 10 and kill the core.
+### Toolchain constraints
+
+Builds use **frog-toolchain** (`mipsel-mti-elf-gcc` 7.4.0):
+
+```
+-EL -march=mips32 -mtune=mips32r2 -msoft-float -G0 -mno-abicalls -fno-pic
+```
+
+**`-march` must stay plain `mips32`.** The JZ4775 has no MIPS32r2 bit-manipulation unit;
+`seb`, `seh`, `ins`, `ext`, `wsbh` and `rotr` raise ExcCode 10 and kill the core.
 `-mtune=mips32r2` is only a scheduling hint and is safe. There is no FPU, hence
-`-msoft-float`. `-mno-abicalls -fno-pic -G0` make firmware calls resolve to absolute
-addresses from the linker script with no GOT.
+`-msoft-float`; soft-float helpers are the single biggest performance risk on this port.
+`-mno-abicalls -fno-pic -G0` make firmware calls resolve to absolute addresses from the
+linker script with no GOT.
 
-### Desktop validation (work in progress)
+Verify a build before shipping it:
 
-The `RENDERER=sw` software renderer also builds on a desktop host, which is the only way
-to exercise it without hardware in the loop. The Makefile builds in-tree, so run it from
-the repository root:
+```bash
+mipsel-mti-elf-objdump -f build/core.elf | grep architecture   # expect: mips:isa32
+mipsel-mti-elf-objdump -d build/core.elf \
+  | grep -oE '\b(seb|seh|ins|ext|wsbh|rotr)\b' | sort | uniq -c   # expect: no output
+```
+
+### Desktop build
+
+The software renderer also builds on a desktop host, which is useful for running the VM
+and input code without hardware. The Makefile builds in-tree, so run it from the repo root:
 
 ```bash
 make RENDERER=sw BACKEND=sdl2
 ./build/butterscotch game.unx --renderer software
 ```
 
-`RENDERER=sw` only *compiles* the renderer in; you still need `--renderer software` at
+`RENDERER=sw` only *compiles* the renderer — you still need `--renderer software` at
 runtime, otherwise `gfx` defaults to GL and the software path is never taken. On a host
-build the renderer ends a frame through `tools/sw_present_sink.c`, which writes PNGs
-controlled by these environment variables:
-
-| Variable | Meaning |
-|---|---|
-| `SW_SHOT_PREFIX` | output filename prefix (default `sw`) |
-| `SW_SHOT_MAX` | stop after N frames (default `0` = unlimited) |
-
-The console build is unaffected: `PLATFORM_SF2000` resolves the present symbol to
-`sf2000_present_frame()` in the firmware layer, so the host sink is excluded there.
+build the frame ends in `tools/sw_present_sink.c`, which writes PNGs driven by
+`SW_SHOT_PREFIX` (default `sw`) and `SW_SHOT_MAX` (default `0` = unlimited).
 
 > [!WARNING]
-> Desktop output is **not yet verified as correct**. As of this release the host path
-> emits correctly sized 320x240 frames, but they are fully black, while the GL reference
-> at 640x480 renders real content from the same rooms. Treat the desktop build as a
-> compile-and-run harness only. Validate rendering on real hardware.
+> Desktop output is **not yet verified as correct**. The host path emits correctly sized
+> 320x240 frames, but they come out fully black, while the GL reference at 640x480 draws
+> real content from the same rooms. Treat the desktop build as a compile-and-run harness,
+> not a correctness check. Validate rendering on real hardware.
 
-### Troubleshooting
+---
+
+## Troubleshooting
 
 | Symptom | Cause |
 |---|---|
-| Black screen, core fails to load | `bisrv.asd` loader is missing or out of date. Rebuild `sf2000_multicore` and run its `install` target. |
-| Text renders as solid white bars | The pre-dilation fix in `src/sw_renderer/` is required; you are on an older `.sf2k`. |
-| 1px strokes missing from glyphs | Same as above — needs the area-coverage downscale, not nearest-neighbour. |
+| **Menus do not respond to A / arrows** | **Known issue.** `obj_time_Step_1` calls `trophy_init()` every frame; unless it reports initialised, the step event returns early and `control_update()` never runs, so `control_check_pressed()` stays false and nothing is selectable. Being tracked. |
+| Black screen, core never loads | `bisrv.asd` loader missing or stale. Rebuild `sf2000_multicore` and run its `install` target. |
+| Text renders as solid white bars | You are on an older `.sf2k` without the coverage-downscale fix (see [How the rendering works](#how-the-rendering-works)). |
+| 1px strokes missing from glyphs | Same as above — needs area-coverage downscaling, not nearest-neighbour and not dilation. |
 | Nothing appears except backgrounds | `ATLAS.BIN` / `ATLAS.RGBA4444` missing or stale. Re-run `tools/pack_assets.py`. |
-| Music silent | `*.ogg` files not copied to `ROMS/butterscotch/`. |
-| Menus do not respond to A / arrows | Known issue. `obj_time_Step_1` calls `trophy_init()` every frame; unless it reports initialised, the step event returns early and `control_update()` never runs, so `control_check_pressed()` stays false and nothing is selectable. Being tracked. |
+| Music silent | `*.ogg` files were not copied to `ROMS/butterscotch/`. |
+| Core crashes with `ExcCode 10` | Built with `-march=mips32r2`. Rebuild with plain `-march=mips32`. |
+| Script aborts with `libretro.h not found` | `MULTICORE_SRC` is unset or wrong. See [Building from source](#building-from-source). |
 
-## Building Butterscotch
+---
 
-```bash
-mkdir build && cd build
-cmake -DBACKEND=glfw3 -DCMAKE_BUILD_TYPE=Debug ..
-make
-```
-
-If you are using CLion, set the platform in `Settings` > `Build, Execution, Deployment` > `CMake` and add `-DBACKEND=glfw3`
-
-Then run Butterscotch with `./butterscotch` - it will automatically search for `data.win`, `assets/game.unx`, `assets/game.droid` or `../Resources/game.ios` relative to the binary, otherwise you can specify a path with `./butterscotch /path/to/data.win`.
-
-## CLI parameters
-
-The desktop target has a lot of nifty CLI parameters that you can use to trace and debug games running on it.
+## Repository layout
 
 ```
---help                                 - Show this message
---screenshot <filename>                - Specify the filename for screenshots
---screenshot-at-frame <frame>          - Take a screenshot at the specified frame
---screenshot-surfaces <filename>       - Take a screenshot of all surfaces at the specified frame
---screenshot-surfaces-at-frame <frame> - Specify the filename for surface screenshots
---headless                             - Launch without a window
---print-rooms                          - Print all rooms in the game and exit
---print-objects                        - Print all objects in the game and exit
---print-shaders                        - Print all shaders in the game and exit
---print-declared-functions             - Print all declared functions in the game and exit
---print-unknown-functions              - Print all unknown functions used by the game and exit
---trace-variable-reads                 - Trace variable reads
---trace-variable-writes                - Trace variable writes
---trace-function-calls                 - Trace function calls
---trace-alarms                         - Trace alarms
---trace-instance-lifecycles            - Trace instance creations and deletions
---trace-events                         - Trace events
---trace-collisions                     - Trace collisions between instances
---trace-event-inherited                - Trace event inherited calls
---trace-tiles                          - Trace drawn tiles
---trace-opcodes                        - Trace opcodes
---trace-stack                          - Trace stack
---trace-frames                         - Log frametimes
---always-log-unknown-functions         - Always log unknown function calls instead of once per script
---always-log-stubbed-functions         - Always log stubbed function calls instead of once per script
---exit-at-frame <frame>                - Exit at the specified frame
---trace-bytecode-after-frame <frame>   - Delay stack and opcode tracing until the specified frame
---dump-frame <frame>                   - Dump the runner state at the specified frame
---dump-frame-json <frame>              - Dump the runner state in json at the specified frame
---dump-frame-json-file <file>          - Specify an output file for runner state dumps
---speed <speed>                        - Set a normal speed multiplier
---fast-forward-speed <speed>           - Set a fast-forward speed multiplier
---seed <seed>                          - Seed for the random number generator
---debug                                - Enable debug mode
---disassemble <script>                 - Disassemble the specified script and print to console (\* disassembles all)
---record-inputs <file>                 - Record all keyboard inputs to a file
---playback-inputs <file>               - Playback input from file
---renderer <renderer>                  - Set the rendering API
---lazy-rooms                           - Lazily load rooms, increases load times but reduces memory usage
---eager-room <rooms>                   - When --lazy-rooms is set, keep these rooms always in memory
---os-type <os>                         - Set the reported OS type
---window-size <dimentions>             - Set a custom window size
---widescreen-hack <aspect ratio>       - Set a custom aspect ratio
---profile-gml-scripts                  - Log which GML scripts are the heaviest in terms of time and executed instructions
---save-folder <directory>              - Set the directory will save files will be stored
---game-args <args>                     - Arguments to pass to the game
---profile-opcodes                      - Rank which GML opcodes were executed the most
---lazy-textures                        - Load textures into VRAM on first use, improving startup times
---load-type <type>                     - Specify how data.win is loaded, per-chunk or all at once
---disable-log-colours                  - Disable colours for warning, error, and debug logs
---disable-log-colors                   - Same as --disable-log-colours, but different spelling
+src/sf2000/         platform layer: input, video, audio, boot overlay
+src/sw_renderer/    software RGB565 renderer
+cores/butterscotch/ Makefile producing the core archive
+tools/              pack_assets.py, install_to_card.sh, sw_present_sink.c
 ```
 
-## Debug Features
+---
 
-When running Butterscotch with `--debug`, the following hotkeys are enabled:
+## Credits
 
-* `Page Up`: Moves forward one room
-* `Page Down`: Moves backwards one room
-* `P`: Pauses the game
-* `O`: While paused, advances the game loop by one frame
-* `F12`: Dumps the current runner state to the console
-* `F11`: Dumps the current runner state to the console (JSON format), or dumps it to a file if `--dump-frame-json-file` is set.
-* `F10`: Sets the `global.interact` flag to `0`. Useful in Undertale when you are moving through rooms and one of them starts a cutscene that doesn't let you move.
+Built on top of **[Butterscotch](https://github.com/ButterscotchRunner/Butterscotch)** by
+[Derek Yu / mrpowergamerbr](https://mrpowergamerbr.com), an open source
+re-implementation of the GameMaker: Studio runner. Thanks to
+[Trademarked69](https://github.com/Trademarked69) for `sf2000_multicore`.
 
-## Performance
+**Undertale** was created by **Toby Fox**. This project contains none of its assets and
+requires you to supply your own copy.
 
-Performance is pretty good on any modern computer, but when running on low end targets (like the PS2) it is *very* slow when there's a lot of instances on screen, or when a instance does a for loop.
+---
 
-## Then why not have a transpiler?
+## License
 
-The issue with a transpiler is that, if you try transpiling the game in the "naive" way, that is, emitting VM calls like it was the original bytecode, you won't get any
-*improvement* from it, you would need to create a *good* transpiler that actually transpiles it into *good* code, and that's way harder.
-
-Having a transpiler also have other disadvantages:
-
-1. You lose the ability of debugging the runner at a "high level" by tracing opcodes.
-2. Compilation is SLOW, transpiling Undertale in a naive way to C and building it takes 90 seconds on a modern computer, and building it to other targets is so slow that I wasn't even able to test it.
-
-## Screenshots
-
-### Undertale (GLFW) [WAD Version 16]
-
-<img width="160" height="120" alt="Image" src="https://github.com/user-attachments/assets/6651cc2e-0d6d-4354-b98d-081e84a981df" />
-<img width="160" height="120" alt="Image" src="https://github.com/user-attachments/assets/1d6edc51-2829-4f8f-b900-393f21a6655b" />
-<img width="160" height="120" alt="Image" src="https://github.com/user-attachments/assets/0d41f16c-7ee5-47de-a2e8-5831cdcd2745" />
-<img width="160" height="120" alt="Image" src="https://github.com/user-attachments/assets/45dc47fb-6d8a-44d4-8cbb-2e5791100144" />
-<img width="160" height="120" alt="Image" src="https://github.com/user-attachments/assets/7db1c869-e625-4558-9119-0f23da0f020c" />
-<img width="160" height="120" alt="Image" src="https://github.com/user-attachments/assets/71fc7616-d580-48fe-aa6d-1e6ceea41bdb" />
-<img width="160" height="120" alt="Image" src="https://github.com/user-attachments/assets/4098936e-a1b9-4971-901d-702ec390afa7" />
-<img width="160" height="120" alt="Image" src="https://github.com/user-attachments/assets/dd3dcce3-3d78-452f-9af0-27133497650c" />
-<img width="160" height="120" alt="Image" src="https://github.com/user-attachments/assets/2e356d04-5aaf-47d4-9bc3-4abba78cd18d" />
-<img width="160" height="120" alt="Image" src="https://github.com/user-attachments/assets/a9cbc57f-e9c1-4985-a6af-a98e5fce5ff3" />
-<img width="160" height="120" alt="Image" src="https://github.com/user-attachments/assets/e5c67781-0ffc-43c8-9c7d-333254eed704" />
-<img width="160" height="120" alt="Image" src="https://github.com/user-attachments/assets/93900e3c-79b5-4a05-bd6c-d68814e9e101" />
-
-### Undertale (PlayStation 2) [WAD Version 16]
-
-Here's a video :3 https://youtu.be/PuzBxe0VGtY
-
-Here's also another video, this time showing off the Asriel Dreemurr final battle https://youtu.be/vkQMqXr0MQE
-
-### DELTARUNE (SURVEY_PROGRAM) (PlayStation 2) [WAD Version 16]
-
-Here's a video :3 https://youtu.be/TLJtV2WnrmQ
-
-### DELTARUNE Chapter 2 (GLFW) [WAD Version 17]
-
-<img width="160" height="120" alt="image" src="https://github.com/user-attachments/assets/d0df9858-ad2b-4642-9f32-a542d1d942e0" />
-
-### DELTARUNE Chapter 2 (PlayStation 2) [WAD Version 17]
-
-Here's a video :3 https://youtu.be/uuN72Hv50d4
-
-### DELTARUNE Chapter 3 (GLFW) [WAD Version 17]
-
-<img width="160" height="120" alt="image" src="https://github.com/user-attachments/assets/7b49d434-e66f-4ee3-bfe8-c0b4f45ceeb7" />
-<img width="160" height="120" alt="image" src="https://github.com/user-attachments/assets/afbe62ad-4706-4882-a9c9-6c239ed57c69" />
-<img width="160" height="120" alt="image" src="https://github.com/user-attachments/assets/d83c9f8c-e9b9-410e-8d3d-3663ede23fab" />
-
-### DELTARUNE Chapter 3 (PlayStation 2) [WAD Version 17]
-
-Here's a video :3 https://youtu.be/c9r79sQABYg
-
-### DELTARUNE Chapter Selector (GLFW) [WAD Version 17]
-
-<img width="160" height="120" alt="image" src="https://github.com/user-attachments/assets/b8a848df-fd1c-49b7-9602-e8020ac86d5d" />
-
-### Undertale 10th Anniversary (GLFW) [WAD Version 17]
-
-<img width="160" height="120" alt="image" src="https://github.com/user-attachments/assets/4ec0c64e-23f1-4bb1-8291-6aaf626a690f" />
-<img width="160" height="120" alt="image" src="https://github.com/user-attachments/assets/4ea7d078-784d-4861-aeb1-4ee2d1d70508" />
-<img width="160" height="120" alt="image" src="https://github.com/user-attachments/assets/45eb5be9-5e7b-4930-bb7e-2f2c49c76a49" />
-
-### NXTALE (Undertale for Xbox One) (GLFW) [WAD Version 17]
-
-<img width="160" alt="image" src="https://github.com/user-attachments/assets/7c4e2224-76e4-495e-8382-fad2dbdef207" />
-<img width="160" alt="image" src="https://github.com/user-attachments/assets/6af34191-66c6-44dd-8712-907641520073" />
-<img width="160" alt="image" src="https://github.com/user-attachments/assets/150aec4c-8cfb-4cef-9db0-f339158b0d14" />
-<img width="160" alt="image" src="https://github.com/user-attachments/assets/4e3489e8-11de-4c8c-953c-f7b776bb4eb8" />
-
-### AM2R (GLFW) [WAD Version 14]
-
-<img width="160" alt="image" src="https://github.com/user-attachments/assets/3e46dfed-487c-4d91-9cd5-c71adc7a6cb5" />
-<img width="160" alt="image" src="https://github.com/user-attachments/assets/4a4b6da1-dae4-4d0f-8611-12e7a1fc8d8c" />
-<img width="160" alt="image" src="https://github.com/user-attachments/assets/d522be68-1003-4208-bf6b-d59a004606ba" />
-
-### GameMaker: Studio Platformer Demo (GLFW) [WAD Version 10]
-
-<img width="160" alt="image" src="https://github.com/user-attachments/assets/e8cd174c-5113-416b-9e3a-c4029e1e3176" />
-<img width="160" alt="image" src="https://github.com/user-attachments/assets/3702a261-01fe-4b04-9e6c-b69336c2ce46" />
+**AGPL-3.0** — inherited from Butterscotch. See [`LICENSE`](LICENSE).
 
 ## Disclaimer
 
-Butterscotch has no association, endorsement, or any connection whatsoever with any of the software that it facilitates, and does not provide any of the software it can run by itself. In order to use Butterscotch, you will need to provide your own game files.
+No association with, endorsement of, or connection to any software this project
+facilitates. You must provide your own game files.
