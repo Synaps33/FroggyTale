@@ -14577,7 +14577,7 @@ static const char* dateOrdinalSuffix(int day) {
 }
 
 static RValue builtin_date_date_string(VMContext* ctx, MAYBE_UNUSED RValue* args, MAYBE_UNUSED int32_t argCount) {
-    REQUIRE_ARGC_AT_LEAST("date_date_string", 1, RValue_makeOwnedString(""));
+    REQUIRE_ARGC_AT_LEAST("date_date_string", 1, RValue_makeUndefined());
     struct tm parts;
     
     if (!dateGetParts(ctx, args[0], &parts)) return RValue_makeString("");
@@ -14591,7 +14591,7 @@ static RValue builtin_date_date_string(VMContext* ctx, MAYBE_UNUSED RValue* args
 }
 
 static RValue builtin_date_datetime_string(VMContext* ctx, MAYBE_UNUSED RValue* args, MAYBE_UNUSED int32_t argCount) {
-    REQUIRE_ARGC_AT_LEAST("date_datetime_string", 1, RValue_makeOwnedString(""));
+    REQUIRE_ARGC_AT_LEAST("date_datetime_string", 1, RValue_makeUndefined());
     struct tm parts;
     
     if (!dateGetParts(ctx, args[0], &parts)) return RValue_makeString("");
