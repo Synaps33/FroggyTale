@@ -19,13 +19,17 @@
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SD_ROOT="${SD_ROOT:-/media/Sajnaps/GB300}"
+# SD_ROOT: mount point of the card. No default on purpose -- guessing a path risks
+# writing to the wrong filesystem, and the script already refuses non-FAT mounts.
+SD_ROOT="${SD_ROOT:-}"
 FORCE="${FORCE:-0}"
 
-CORE_SRC="$REPO/dist/butterscotch.sf2k"
-WAD_SRC="$REPO/assets/game.unx"
-ATLAS_BIN_SRC="$REPO/build/ATLAS.BIN"
-ATLAS_PX_SRC="$REPO/build/ATLAS.RGBA4444"
+# Every source is overridable so the checkout does not have to hold the WAD.
+# The WAD is the game's copyrighted data and is never committed here.
+CORE_SRC="${CORE_SRC:-$REPO/dist/butterscotch.sf2k}"
+WAD_SRC="${WAD_SRC:-$REPO/assets/game.unx}"
+ATLAS_BIN_SRC="${ATLAS_BIN_SRC:-$REPO/build/ATLAS.BIN}"
+ATLAS_PX_SRC="${ATLAS_PX_SRC:-$REPO/build/ATLAS.RGBA4444}"
 
 CORE_DIR_DEIMOS="system/Deimos/cores"
 CORE_DIR_LEGACY="cores/butterscotch"
@@ -35,13 +39,16 @@ say()  { printf '%s\n' "$*"; }
 fail() { printf 'BLAD: %s\n' "$*" >&2; exit 1; }
 
 # --- 1. sprawdzenie, czy karta jest NAPRAWDĘ zamontowana -------------------------------
-# /media/Sajnaps/GB300 potrafi zostac jako zwykly katalog na dysku glownym, gdy czytnik
-# karty jest odlaczony. Bez tego guardu skrypt nadpisalby pliki w $HOME zamiast na karcie.
+# Ścieżka karty potrafi zostać jako zwykły katalog na dysku głównym, gdy czytnik
+# karty jest odłączony. Bez tego guardu skrypt nadpisałby pliki w $HOME zamiast na karcie.
+if [ -z "$SD_ROOT" ]; then
+    fail "nie podano SD_ROOT. Uzycie:
+         SD_ROOT=/media/<twoja-karta> $0"
+fi
 if ! mountpoint -q "$SD_ROOT"; then
     fail "karta SD nie jest zamontowana w '$SD_ROOT' (to zwykly katalog, nie punkt montowania).
          Podlacz czytnik i zamontuj, np.:
-           sudo mkdir -p '$SD_ROOT' && sudo mount /dev/mmcblk0p1 '$SD_ROOT'
-         (albo podaj poprawna sciezke: SD_ROOT=/mnt/sda1 $0)"
+           sudo mkdir -p '$SD_ROOT' && sudo mount /dev/mmcblk0p1 '$SD_ROOT'"
 fi
 # sama lokalizacja to za mało - sprawdz, że to faktycznie partycja FAT, a nie np. tmpfs
 sd_fs=$(stat -f -c %T "$SD_ROOT" 2>/dev/null || echo unknown)
