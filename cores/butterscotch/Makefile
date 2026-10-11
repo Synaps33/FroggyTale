@@ -26,9 +26,7 @@ MULTICORE_SRC ?= $(abspath $(REPO_ROOT)/../sf2000_multicore)
 LIBRETRO_COMMON ?= $(MULTICORE_SRC)/libs/libretro-common/include
 
 ifeq ($(wildcard $(LIBRETRO_COMMON)/libretro.h),)
-$(error libretro.h not found under MULTICORE_SRC='$(MULTICORE_SRC)'.
-        Pass MULTICORE_SRC=/path/to/sf2000_multicore (the tree holding
-        libs/libretro-common/include and include/deimos.h))
+$(error libretro.h not found under MULTICORE_SRC='$(MULTICORE_SRC)'. Pass MULTICORE_SRC=/path/to/sf2000_multicore - the tree holding libs/libretro-common/include and include/deimos.h)
 endif
 
 MIPS    ?= /opt/frog-toolchain/mipsel-mti-elf_stable/bin/mipsel-mti-elf-

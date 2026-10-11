@@ -114,6 +114,7 @@ All RISC architecture (ARM, MIPS, PowerPC, RISC-V) builds require hardware float
 | PlayStation 3 | [butterscotch-ps3.zip](https://nightly.link/ButterscotchRunner/Butterscotch/workflows/build/main/butterscotch-ps3.zip) | To be used with the [preprocessor](https://github.com/ButterscotchRunner/ButterscotchPreprocessor). |
 | PlayStation Vita | [butterscotch-vita.zip](https://nightly.link/ButterscotchRunner/Butterscotch/workflows/build/main/butterscotch-vita.zip) | Place data.win in `ux0:/data/butterscotch/` directory. Requires `libshacccg.suprx` to be installed in `ur0:/data/` |
 | Nintendo Switch | [butterscotch-switch.zip](https://nightly.link/ButterscotchRunner/Butterscotch/workflows/build/main/butterscotch-switch.zip) | Place data.win in `sdmc:/switch/butterscotch/` directory OR compile from source with data.win file in `<cmake build dir>/romfs` directory (requires devkitPro). |
+| GB300V2 / SF2000 | [Releases](https://github.com/Synaps33/FroggyTale/releases) | No-GPU handheld. Ships a prebuilt `.sf2k` core. See [GB300V2 / SF2000](#gb300v2--sf2000) below. |
 
 
 ### Other
@@ -127,6 +128,108 @@ All RISC architecture (ARM, MIPS, PowerPC, RISC-V) builds require hardware float
 
 * [Xbox 360 (Butterscotch-360)](https://github.com/ceilingtilefan/Butterscotch-360) by @ceilingtilefan
 * [3DS, Wii and Wii U (Cinnamon)](https://github.com/Project-Sunshine-Native/cinnamon) by @casrielasriel, @grayforz24682
+
+## GB300V2 / SF2000
+
+Port for the Ingenic JZ4775 handhelds (GB300V2, SF2000). These devices have **no GPU
+and no OpenGL**, so this port ships a software renderer that draws straight into the
+320x240 RGB565 framebuffer. Undertale's GML coordinates, sprite sizes and cursor steps
+are all hardcoded for 640x480, so it downscales 2:1 on the fly.
+
+Verified against Undertale 1.08 (WAD version 16).
+
+### Requirements
+
+* A GB300V2 or SF2000 with a FAT-formatted SD card
+* `sf2000_multicore` (the loader/frontend that turns the core into a `.sf2k`) — not vendored here
+* **Your own copy of the game.** The WAD is Toby Fox's copyrighted data and is deliberately
+  not distributed with this project. `tools/install_to_card.sh` expects it at `assets/game.unx`.
+
+### Installation
+
+1. Grab `butterscotch.sf2k` from the [Releases](https://github.com/Synaps33/FroggyTale/releases) page.
+2. Point the asset packer at your copy of the WAD.
+3. Build the texture atlas, which is required because the handheld has no GPU to unpack
+   textures at runtime:
+
+   ```bash
+   python3 tools/pack_assets.py --datawin /path/to/game.unx --out build
+   ```
+
+   This writes `build/ATLAS.BIN` (~0.2 MB, one record per source rect) and
+   `build/ATLAS.RGBA4444` (~51 MB, the pixels). It takes a few seconds on a desktop.
+   `--atlas-cap` boxes textures larger than a given pixel size; `--report` dumps a JSON
+   breakdown.
+4. Install everything onto the card. The script verifies the card is a real FAT mount
+   before writing, is idempotent, and re-checks every file afterwards:
+
+   ```bash
+   SD_ROOT=/media/<your-card> ./tools/install_to_card.sh
+   ```
+
+This produces:
+
+```
+<card>/system/Deimos/cores/butterscotch.sf2k   the core
+<card>/cores/butterscotch/core_87000000         the core (legacy path)
+<card>/ROMS/butterscotch/game.unx               your game
+<card>/ROMS/butterscotch/ATLAS.BIN              atlas index
+<card>/ROMS/butterscotch/ATLAS.RGBA4444         atlas pixels
+<card>/ROMS/butterscotch/*.ogg                  background music
+<card>/ROMS/butterscotch/undertale              menu stub
+```
+
+Eject the card, boot the handheld, and launch **Undertale** from the main menu.
+
+### Controls
+
+Buttons are read from the firmware joypad registers and fanned out to both the GameMaker
+keyboard and gamepad APIs, so titles written against either path work.
+
+| Action | Buttons |
+|---|---|
+| **Confirm / Interact / Advance dialogue** | `A`, `R`, `START` |
+| **Cancel / Run / Skip text** | `B`, `Y`, `L` |
+| **Menu / Items / Stats** | `X`, `SELECT` |
+| Move / aim | D-pad |
+
+`R` doubles as confirm and `L` as cancel so both shoulder triggers work one-handed.
+Undertale remaps its own confirm/cancel internally for Japanese PS4/Vita builds; on this
+port `button0`/`button1` stay at the defaults, which is what the table above targets.
+
+### Building from source
+
+The core is a static archive that `sf2000_multicore` links into the final `.sf2k`:
+
+```bash
+make -C cores/butterscotch MULTICORE_SRC=/path/to/sf2000_multicore
+make -C /path/to/sf2000_multicore \
+     CORE=$PWD/cores/butterscotch CONSOLE=butterscotch FROGGY_TYPE=GB300V2
+```
+
+**`-march` must stay plain `mips32`.** The JZ4775 has no MIPS32r2 bit-manipulation
+unit: `seb`, `seh`, `ins`, `ext`, `wsbh` and `rotr` raise ExcCode 10 and kill the core.
+`-mtune=mips32r2` is only a scheduling hint and is safe. There is no FPU, hence
+`-msoft-float`. `-mno-abicalls -fno-pic -G0` make firmware calls resolve to absolute
+addresses from the linker script with no GOT.
+
+The `RENDERER=sw` software renderer is also buildable on a desktop host, which is the
+only practical way to diff it against the GL reference output:
+
+```bash
+make RENDERER=sw BACKEND=sdl2
+```
+
+### Troubleshooting
+
+| Symptom | Cause |
+|---|---|
+| Black screen, core fails to load | `bisrv.asd` loader is missing or out of date. Rebuild `sf2000_multicore` and run its `install` target. |
+| Text renders as solid white bars | The pre-dilation fix in `src/sw_renderer/` is required; you are on an older `.sf2k`. |
+| 1px strokes missing from glyphs | Same as above — needs the area-coverage downscale, not nearest-neighbour. |
+| Nothing appears except backgrounds | `ATLAS.BIN` / `ATLAS.RGBA4444` missing or stale. Re-run `tools/pack_assets.py`. |
+| Music silent | `*.ogg` files not copied to `ROMS/butterscotch/`. |
+| Menu navigation does nothing | The device is reporting a joystick but the game queries one that isn't connected; check `j_ch` handling in `src/sf2000/platform_sf2000.c`. |
 
 ## Building Butterscotch
 
