@@ -36,56 +36,93 @@ move the cursor in menus.
 
 ## Requirements
 
-* A **GB300V2** or **SF2000** with a FAT-formatted SD card.
+* A **GB300V2** or **SF2000** with a FAT-formatted SD card, and ~115 MB free.
 * **[`sf2000_multicore`](https://github.com/Trademarked69/sf2000_multicore)** — the
-  loader that wraps the core into a `.sf2k`. Not vendored here.
-* **Your own copy of Undertale.** The WAD is Toby Fox's copyrighted data and is
-  deliberately not distributed with this project.
+  loader that wraps the core into a `.sf2k`. Not vendored here, but you do not need to
+  build it: it is already baked into `butterscotch.sf2k` as downloaded.
+* **Your own copy of Undertale.** The game file is Toby Fox's copyrighted data and is
+  deliberately not distributed with this project. See
+  [Get your game file](#2-get-your-game-file).
 
 ---
 
 ## Installation
 
-### 1. Get the core
+You need **two things**: a prebuilt core from the Releases page, and **your own copy of
+the game**. The game files cannot be downloaded here — they are Toby Fox's copyrighted
+data, so this project will never ship them.
 
-Download `butterscotch.sf2k` from the
-[Releases page](https://github.com/Synaps33/FroggyTale/releases).
+### 1. Download the core and atlas
 
-### 2. Build the texture atlas
+From the [Releases page](https://github.com/Synaps33/FroggyTale/releases), download all
+three files into one folder:
 
-The console has no GPU, so textures cannot be unpacked at runtime. Prebuild them into an
-atlas from your own copy of the WAD:
-
-```bash
-python3 tools/pack_assets.py --datawin /path/to/game.unx --out build
-```
-
-This takes a few seconds and writes:
-
-| File | Size | Contents |
+| File | Size | What it is |
 |---|---|---|
-| `build/ATLAS.BIN` | ~0.2 MB | index, one record per source rect |
-| `build/ATLAS.RGBA4444` | ~51 MB | the pixels |
+| `butterscotch.sf2k` | 1.0 MB | the core |
+| `ATLAS.BIN` | 0.2 MB | texture atlas index |
+| `ATLAS.RGBA4444` | 51.0 MB | texture atlas pixels |
 
-Useful flags: `--atlas-cap N` box-filters textures larger than `N` pixels,
-`--report out.json` dumps a breakdown.
+The atlas is prebuilt because the handheld has no GPU and cannot unpack textures at
+runtime. The one included was generated from **Undertale 1.08**.
+
+### 2. Get your game file
+
+You need `game.unx` — the WAD from your own copy of Undertale.
+
+> **It does not come from this repo.** Do not download Undertale from an unofficial
+> source; get the game the way you normally would. Any recent 1.08 copy is fine —
+> the file this port expects is the WAD (GameMaker bytecode archive), ~60 MB.
+
+Drop it next to the three downloaded files so the folder looks like this:
+
+```
+myfolder/
+├── butterscotch.sf2k      1.0 MB
+├── ATLAS.BIN              0.2 MB
+├── ATLAS.RGBA4444        51.0 MB
+└── game.unx              60.1 MB
+```
 
 ### 3. Install to the card
 
-```bash
-SD_ROOT=/media/<your-card> ./tools/install_to_card.sh
-```
-
-The script refuses to run unless `SD_ROOT` is a real FAT mount point, is idempotent
-(skips files that already match), and verifies every file after copying. Override any
-source path if your layout differs:
+Clone this repo for the install script, then run:
 
 ```bash
-SD_ROOT=/media/<card> \
-WAD_SRC=/path/to/game.unx \
-CORE_SRC=./butterscotch.sf2k \
+git clone https://github.com/Synaps33/FroggyTale.git
+cd FroggyTale
+
+SD_ROOT=/media/<your-card> \
+CORE_SRC=../myfolder/butterscotch.sf2k \
+ATLAS_BIN_SRC=../myfolder/ATLAS.BIN \
+ATLAS_PX_SRC=../myfolder/ATLAS.RGBA4444 \
+WAD_SRC=../myfolder/game.unx \
   ./tools/install_to_card.sh
 ```
+
+`<your-card>` is where the card is mounted, e.g. `/media/SDCARD` or `/mnt/sda1`. The
+script refuses to run unless that path is a real FAT mount point, skips files that
+already match, and verifies everything after copying.
+
+You need roughly **115 MB** of free space, plus room for music if you add it.
+
+<details>
+<summary>Manual copy instead of the script</summary>
+
+Copy these four files to the card yourself:
+
+```
+<card>/system/Deimos/cores/butterscotch.sf2k
+<card>/ROMS/butterscotch/game.unx
+<card>/ROMS/butterscotch/ATLAS.BIN
+<card>/ROMS/butterscotch/ATLAS.RGBA4444
+```
+
+Plus `cores/butterscotch/core_87000000` (a copy of the core) on the legacy path, and a
+menu stub: create `<card>/ROMS/butterscotch/undertale` containing exactly
+`butterscotch;butterscotch;game.unx` with no trailing newline.
+
+</details>
 
 ### Resulting card layout
 
@@ -95,11 +132,34 @@ CORE_SRC=./butterscotch.sf2k \
 <card>/ROMS/butterscotch/game.unx               your game
 <card>/ROMS/butterscotch/ATLAS.BIN              atlas index
 <card>/ROMS/butterscotch/ATLAS.RGBA4444         atlas pixels
-<card>/ROMS/butterscotch/*.ogg                  background music
+<card>/ROMS/butterscotch/*.ogg                  background music (optional)
 <card>/ROMS/butterscotch/undertale              menu stub
 ```
 
 Eject the card, boot the handheld, and launch **Undertale** from the main menu.
+
+### Music
+
+Music is optional. If you have the BGMs as `.ogg`, drop them into
+`ROMS/butterscotch/` and they will play. Everything else works without them.
+
+### Different game version?
+
+The prebuilt atlas only matches **Undertale 1.08**, because it encodes the exact texture
+rectangles of that specific WAD. With a different build (1.09, a fanmod, another
+region) the game will load but render wrong or crash.
+
+If that is your situation, build the atlas from *your* file instead — it takes a few
+seconds:
+
+```bash
+python3 tools/pack_assets.py --datawin /path/to/game.unx --out build
+```
+
+This writes `build/ATLAS.BIN` (~0.2 MB) and `build/ATLAS.RGBA4444` (~51 MB); pass them
+to the install script via `ATLAS_BIN_SRC` / `ATLAS_PX_SRC` instead of using the
+downloaded copies. Other flags: `--atlas-cap N` box-filters textures larger than `N`
+pixels, `--report out.json` dumps a breakdown.
 
 ---
 
