@@ -53,7 +53,9 @@
 #include "noop_renderer.h"
 #endif
 #include "overlay_file_system.h"
-#if defined(USE_OPENAL)
+#if defined(PLATFORM_SF2000)
+#include "sf2000_audio.h"
+#elif defined(USE_OPENAL)
 #include "al_audio_system.h"
 #elif defined(USE_MINIAUDIO)
 #include "ma_audio_system.h"
@@ -68,6 +70,10 @@
 
 #ifdef PLATFORM_VITA
 #include "vita_textures.h"
+#endif
+
+#ifdef PLATFORM_SF2000
+#include "hacker_loader.h"
 #endif
 
 enum GraphicsAPI gfx;
@@ -463,7 +469,10 @@ void saveInputRecording() {
     }
 }
 
-#if !defined(_WIN32) && !defined(PLATFORM_VITA) && !defined(__SWITCH__) && !defined(__wasi__)
+/* PLATFORM_SF2000 joins the opt-out list: the GB300/SF2000 firmware installs its own
+ * exception handler (patched to a blue screen of death by the multicore loader) and
+ * this newlib has no sigaction, so the desktop ASAN/crash passthrough cannot build. */
+#if !defined(_WIN32) && !defined(PLATFORM_VITA) && !defined(__SWITCH__) && !defined(__wasi__) && !defined(PLATFORM_SF2000)
 #define USE_CRASH_SIGNAL_HANDLER
 typedef struct { int key; struct sigaction value; } PreviousSignalActionEntry;
 static PreviousSignalActionEntry* previousSignalActions = nullptr;
@@ -513,6 +522,16 @@ static void PreProcessedStuff_free(void) {
     VitaTextures_Free();
 #endif
 }
+
+#ifdef PLATFORM_SF2000
+static void sf2000_progress_callback(const char* chunkName, int chunkIndex, int totalChunks, DataWin* dataWin, void* userData) {
+    (void)dataWin; (void)userData;
+    char msg[32];
+    snprintf(msg, sizeof(msg), "CHUNK: %.4s (%d/%d)", chunkName ? chunkName : "????", chunkIndex + 1, totalChunks);
+    int pct = 32 + (totalChunks > 0 ? (chunkIndex * 33) / totalChunks : 0);
+    hacker_loader_log("WAD", msg, pct);
+}
+#endif
 
 // ===[ MAIN ]===
 int loop(CommandLineArgs args, const char *argv0) {
@@ -585,7 +604,7 @@ int loop(CommandLineArgs args, const char *argv0) {
             options.parseTxtr = false;
         } while(0);
 #endif
-#if defined(USE_MINIAUDIO) || defined(USE_OPENAL)
+#if defined(USE_MINIAUDIO) || defined(USE_OPENAL) || defined(PLATFORM_SF2000)
         if (!args.headless)
             options.parseAudo = true;
 #endif
@@ -595,7 +614,14 @@ int loop(CommandLineArgs args, const char *argv0) {
         options.lazyLoadTextures = args.lazyTextures;
         options.lazyLoadAudio = args.lazyAudio;
         options.eagerlyLoadedRooms = args.eagerRooms;
+#ifdef PLATFORM_SF2000
+        options.progressCallback = sf2000_progress_callback;
+        hacker_loader_log("WAD", "PARSING WAD CHUNKS...", 32);
+#endif
         DataWin* dataWin = DataWin_parse(currentDataWinPath, options);
+#ifdef PLATFORM_SF2000
+        hacker_loader_log("WAD", "WAD PARSE FINISHED [OK]", 65);
+#endif
 
         Gen8* gen8 = &dataWin->gen8;
         logInfo("Loaded \"%s\" (%d) successfully! [WAD Version %u / GameMaker version %u.%u.%u.%u]\n", gen8->name, gen8->gameID, gen8->wadVersion, dataWin->detectedFormat.major, dataWin->detectedFormat.minor, dataWin->detectedFormat.release, dataWin->detectedFormat.build);
@@ -612,6 +638,9 @@ int loop(CommandLineArgs args, const char *argv0) {
         snprintf(windowTitle, sizeof(windowTitle), "Butterscotch - %s", gen8->displayName);
 
         // Initialize VM
+#ifdef PLATFORM_SF2000
+        hacker_loader_log("VM", "INIT GAMEMAKER VM", 80);
+#endif
         VMContext* vm = VM_create(dataWin);
 
         Profiler_setEnabled(&vm->profiler, args.profilerFramesBetween > 0);
@@ -895,8 +924,15 @@ int loop(CommandLineArgs args, const char *argv0) {
         // NOOP is a separate renderer that stubs all draw calls.
         Renderer* renderer = nullptr;
 #ifdef ENABLE_SW_RENDERER
-        if (gfx == SOFTWARE)
+        if (gfx == SOFTWARE) {
+#ifdef PLATFORM_SF2000
+            hacker_loader_log("ATLS", "INIT SPRITE ATLAS...", 70);
+#endif
             renderer = SWRenderer_create();
+#ifdef PLATFORM_SF2000
+            hacker_loader_log("ATLS", "ATLAS LOADED [OK]", 76);
+#endif
+        }
 #endif
 #ifdef ENABLE_NOOP_RENDERER
         if (gfx == NOOP) {
@@ -964,7 +1000,9 @@ int loop(CommandLineArgs args, const char *argv0) {
         if (args.headless) {
             audioSystem = (AudioSystem*) NoopAudioSystem_create();
         } else {
-#if defined(USE_OPENAL)
+#if defined(PLATFORM_SF2000)
+            audioSystem = (AudioSystem*) Sf2000AudioSystem_create(dataWin);
+#elif defined(USE_OPENAL)
             audioSystem = (AudioSystem*) AlAudioSystem_create();
 #elif defined(USE_MINIAUDIO)
             audioSystem = (AudioSystem*) MaAudioSystem_create(dataWin);
@@ -1046,6 +1084,9 @@ int loop(CommandLineArgs args, const char *argv0) {
 #endif
 
         // Initialize the first room and fire Game Start / Room Start events
+#ifdef PLATFORM_SF2000
+        hacker_loader_log("ROOM", "LOADING FIRST ROOM...", 95);
+#endif
         Runner_initFirstRoom(runner);
 
         // Main loop

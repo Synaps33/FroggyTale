@@ -6,3 +6,20 @@ CMakeUserPresets.json
 compat/config.mk
 /.vs
 *.log
+
+# --- SF2000 / GB300 port ---
+# Game assets extracted from the Undertale 1.08 WAD (game.unx, ATLAS.*, *.ogg).
+# These are Toby Fox's copyrighted data and are deliberately not tracked; drop your
+# own copy in assets/ and tools/install_to_card.sh will pick it up.
+/assets/
+
+# Built core / archive artifacts
+*.sf2k
+*.a
+ATLAS.BIN
+ATLAS.RGBA4444
+
+# Never commit credentials
+github.txt
+*.pat
+.env

@@ -208,6 +208,18 @@ DEFINES += $(DEFINE)ENABLE_NOOP_RENDERER
 endif
 endif
 
+# RENDERER=sw builds the software RGB565 renderer in src/sw_renderer alongside a normal
+# windowing BACKEND (sdl2, glfw3, ...).  It exists so the SF2000/GB300 port can be
+# exercised and diffed against the GL reference output on a desktop host, which is the
+# only way to validate a renderer whose real target has no GPU and no display.
+# BACKEND itself stays the windowing-system selector, as upstream uses it.
+ifeq ($(RENDERER),sw)
+DEFINES += $(DEFINE)ENABLE_SW_RENDERER
+SRCS += $(wildcard src/sw_renderer/*.c)
+INCLUDES += $(INC)src/sw_renderer
+HEADERS += $(wildcard src/sw_renderer/*.h)
+endif
+
 ifdef DISABLE_WAD14
 ifdef DISABLE_WAD16
 ifdef DISABLE_WAD17
@@ -220,6 +232,7 @@ ifeq ($(BACKEND),noop)
 ifdef DISABLE_NOOP_RENDERER
 $(error must enable at least 1 renderer)
 endif
+else ifeq ($(RENDERER),sw)
 else
 ifdef DISABLE_LEGACY_GL
 ifdef DISABLE_MODERN_GL

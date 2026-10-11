@@ -8,6 +8,9 @@
 #include "platformdefs.h"
 #include "gettime.h"
 #include "runner_mouse.h"
+#ifdef ENABLE_SW_RENDERER
+#include "sw_renderer.h"
+#endif
 #ifdef PLATFORM_SWITCH
 #include <switch.h>
 #include "switch_input.h"
@@ -306,35 +309,22 @@ void platformInitFunctions(Runner *runner) {
 
 #ifdef ENABLE_SW_RENDERER
 
-static SDL_Surface* nextFb = NULL;
-
+/*
+ * The software renderer owns its own RGB565 framebuffer (see SwRenderer_present), so
+ * there is no separate 32-bit surface to hand over.  Call SwRenderer_present() and let
+ * it push the frame: on the handhelds that is sf2000_present_frame(), and on a host
+ * build it is the test sink in tools/sw_present_sink.c that writes a PNG.
+ */
 void Runner_setNextFrame(uint32_t* framebuffer, int width, int height) {
-    if (nextFb) {
-        SDL_FreeSurface(nextFb);
-        nextFb = NULL;
-    }
-
-    nextFb = SDL_CreateRGBSurfaceFrom(
-        framebuffer,
-        width,
-        height,
-        32,
-        width * 4,
-        0x00ff0000, // Rmask
-        0x0000ff00, // Gmask
-        0x000000ff, // Bmask
-        0x00000000  // Amask
-    );
+    (void)framebuffer; (void)width; (void)height;
 }
 
 #endif
 
 void platformSwapBuffers(void) {
 #ifdef ENABLE_SW_RENDERER
-    if(gfx == SOFTWARE) {
-        SDL_BlitSurface(nextFb, NULL, scr, NULL);
-        SDL_UpdateWindowSurface(window);
-    }
+    if (gfx == SOFTWARE)
+        SwRenderer_present();
 #endif
 #if defined(ENABLE_LEGACY_GL) || defined(ENABLE_MODERN_GL)
     if (gfx == LEGACY_GL || gfx == MODERN_GL)
