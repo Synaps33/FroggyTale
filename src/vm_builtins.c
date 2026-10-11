@@ -15,6 +15,7 @@
 #include "random.h"
 
 #include "stdio_compat.h"
+#include <stdint.h>
 #include <stdlib.h>
 #include <float.h>
 #include "string_compat.h"
@@ -14486,6 +14487,28 @@ static bool dateGetParts(VMContext* ctx, RValue datetime, struct tm* parts) {
     return true;
 }
 
+static RValue builtin_date_create_datetime(MAYBE_UNUSED VMContext* ctx, MAYBE_UNUSED RValue* args, MAYBE_UNUSED int32_t argCount) {
+    REQUIRE_ARGC_AT_LEAST("date_create_datetime", 6, RValue_makeReal((GMLReal)0));
+    int32_t year = RValue_toInt32(args[0]);
+    int32_t month = RValue_toInt32(args[1]);
+    int32_t day = RValue_toInt32(args[2]);
+    int32_t hour = RValue_toInt32(args[3]);
+    int32_t minute = RValue_toInt32(args[4]);
+    int32_t second = RValue_toInt32(args[5]);
+
+    struct tm parts = {0};
+    parts.tm_year = year - 1900;
+    parts.tm_mon = month - 1;
+    parts.tm_mday = day;
+    parts.tm_hour = hour;
+    parts.tm_min = minute;
+    parts.tm_sec = second;
+        
+    time_t timestamp = mktime(&parts);
+    if (timestamp == -1) return RValue_makeReal((GMLReal)0);
+    return RValue_makeReal((double) timestamp / (double) 86400 + (double) 25569);
+}
+
 static RValue builtin_date_current_datetime(MAYBE_UNUSED VMContext* ctx, MAYBE_UNUSED RValue* args, MAYBE_UNUSED int32_t argCount) {
     return RValue_makeReal((double) time(NULL) / (double) 86400 + (double) 25569);
 }
@@ -24256,6 +24279,7 @@ void VMBuiltins_registerAll(VMContext* ctx) {
 
     // Misc
     VM_registerBuiltin(ctx, "get_timer", builtin_get_timer);
+    VM_registerBuiltin(ctx, "date_create_datetime", builtin_date_create_datetime);
     VM_registerBuiltin(ctx, "date_current_datetime", builtin_date_current_datetime);
     VM_registerBuiltin(ctx, "date_get_year", builtin_date_get_year);
     VM_registerBuiltin(ctx, "date_get_month", builtin_date_get_month);
