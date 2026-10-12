@@ -31,10 +31,11 @@ extern int      fs_close(int fd);
 extern volatile uint32_t g_joy_task_state;
 extern volatile uint32_t g_joy_state;
 
-/* multicore frontend (lib.c / debug.c) */
+/* multicore frontend (lib.c / debug.c / core_api.c) */
 extern void *sbrk(ptrdiff_t incr);
 extern void  xlog(const char *fmt, ...);
 extern void  lcd_bsod(const char *fmt, ...) __attribute__((noreturn));
+extern void  shutdown_game(void);
 
 /* --- SD card layout, mirrors sf2000_multicore/include/file.h ---------------- */
 #define SDCARD_DIRECTORY    "/mnt/sda1"
@@ -63,5 +64,6 @@ void sf2000_send_audio(const int16_t *samples, size_t frames);
 /* Input polling wrappers implemented in main.c */
 void sf2000_poll_input(void);
 int16_t sf2000_get_input_state(unsigned id);
+void sf2000_shutdown(void);
 
 #endif /* _BS_SF2000_FW_H_ */

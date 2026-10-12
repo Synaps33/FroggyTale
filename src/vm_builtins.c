@@ -11171,6 +11171,10 @@ STUB_RETURN_UNDEFINED(psn_init_np_libs)
 STUB_RETURN_ZERO(psn_default_user)
 STUB_RETURN_ZERO(psn_get_leaderboard_score)
 
+static RValue builtin_trophy_init(MAYBE_UNUSED VMContext* ctx, MAYBE_UNUSED RValue* args, MAYBE_UNUSED int32_t argCount) {
+    return RValue_makeInt32(1);
+}
+
 static RValue builtin_psn_setup_trophies(MAYBE_UNUSED VMContext* ctx, RValue* args, MAYBE_UNUSED int32_t argCount) {
     // Always tells the runner that trophies have been set up successfully
     return RValue_makeInt32(1);
@@ -23753,6 +23757,7 @@ void VMBuiltins_registerAll(VMContext* ctx) {
     VM_registerBuiltin(ctx, "psn_default_user", builtin_psn_default_user);
     VM_registerBuiltin(ctx, "psn_get_leaderboard_score", builtin_psn_get_leaderboard_score);
     VM_registerBuiltin(ctx, "psn_setup_trophies", builtin_psn_setup_trophies);
+    VM_registerBuiltin(ctx, "trophy_init", builtin_trophy_init);
 
     // Draw
     VM_registerBuiltin(ctx, "draw_primitive_begin", builtin_draw_primitive_begin);

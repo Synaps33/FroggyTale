@@ -165,27 +165,10 @@ static void sf2000AudioUpdate(AudioSystem* audio, float deltaTime) {
 }
 
 static int32_t sf2000AudioCreateStream(AudioSystem* audio, const char* filename) {
-    Sf2000AudioSystem* sys = (Sf2000AudioSystem*)audio;
-    int32_t slot = -1;
-    for (int i = 0; i < MAX_AUDIO_STREAMS; i++) {
-        if (!sys->streams[i].active) {
-            slot = i;
-            break;
-        }
-    }
-    if (slot < 0) return -1;
-
-    char* resolved = sys->fileSystem ? sys->fileSystem->vtable->resolvePath(sys->fileSystem, filename) : NULL;
-    if (!resolved) {
-        resolved = safeStrdup(filename);
-    }
-
-    sys->streams[slot].active = true;
-    sys->streams[slot].filePath = resolved;
-    sys->streams[slot].initialGain = 1.0f;
-    sys->streams[slot].initialPitch = 1.0f;
-
-    return AUDIO_STREAM_INDEX_BASE + slot;
+    (void)audio;
+    (void)filename;
+    /* Do not create streams on SF2000 - Vorbis decoding kills CPU performance */
+    return -1;
 }
 
 static bool sf2000AudioDestroyStream(AudioSystem* audio, int32_t streamIndex) {
@@ -267,19 +250,8 @@ static int32_t sf2000AudioPlaySound(AudioSystem* audio, int32_t soundIndex, int3
     slot->pitch = 1.0f;
 
     if (isStream) {
-        int err = 0;
-        stb_vorbis* v = stb_vorbis_open_filename(streamPath, &err, NULL);
-        if (!v) return -1;
-
-        stb_vorbis_info info = stb_vorbis_get_info(v);
-        slot->isStream = true;
-        slot->vorbis = v;
-        slot->channels = info.channels;
-        slot->sampleRate = (int32_t)info.sample_rate;
-        slot->scratchSamples = 0;
-        slot->scratchPos = 0;
-        slot->active = true;
-        return slot->instanceId;
+        /* BGM streaming is disabled to prevent severe CPU lag on soft-float MIPS */
+        return -1;
     }
 
     /* Embedded SFX path */
@@ -502,82 +474,47 @@ void Sf2000AudioSystem_renderFrame(void) {
         SoundSlot* slot = &s_audio->slots[i];
         if (!slot->active || slot->paused) continue;
 
-        float effectiveGain = slot->gain * s_audio->masterGain;
-        if (!slot->isStream) {
-            effectiveGain *= AudioSystem_soundGroupGain(&s_audio->base, slot->soundIndex);
+        if (slot->isStream) {
+            slot->active = false;
+            continue;
         }
+
+        float effectiveGain = slot->gain * s_audio->masterGain;
+        effectiveGain *= AudioSystem_soundGroupGain(&s_audio->base, slot->soundIndex);
         int32_t gainQ12 = (int32_t)(effectiveGain * 4096.0f);
         if (gainQ12 <= 0) continue;
 
-        if (slot->isStream) {
-            /* Streaming OGG Vorbis */
-            stb_vorbis* v = slot->vorbis;
-            if (!v) continue;
+        /* Embedded SFX */
+        if (!slot->pcmData) continue;
 
-            for (int s = 0; s < SAMPLES_PER_FRAME; s++) {
-                if (slot->scratchPos >= slot->scratchSamples) {
-                    int n = stb_vorbis_get_samples_short_interleaved(v, slot->channels,
-                                                                     slot->streamScratch,
-                                                                     1024);
-                    if (n <= 0) {
-                        if (slot->loop) {
-                            stb_vorbis_seek_start(v);
-                            n = stb_vorbis_get_samples_short_interleaved(v, slot->channels,
-                                                                         slot->streamScratch,
-                                                                         1024);
-                        } else {
-                            slot->active = false;
-                            break;
-                        }
-                    }
-                    slot->scratchSamples = n;
-                    slot->scratchPos = 0;
-                }
+        /* Fixed point resampling ratio: (sampleRate * pitch) / 22050 */
+        uint32_t step = (uint32_t)(((uint64_t)slot->sampleRate * (uint32_t)(slot->pitch * 65536.0f)) / SF2000_AUDIO_RATE);
+        if (step == 0) step = 65536;
 
-                int16_t left, right;
-                if (slot->channels == 1) {
-                    left = right = slot->streamScratch[slot->scratchPos++];
+        for (int s = 0; s < SAMPLES_PER_FRAME; s++) {
+            if (slot->samplePos >= slot->totalSamples) {
+                if (slot->loop) {
+                    slot->samplePos = 0;
                 } else {
-                    left = slot->streamScratch[slot->scratchPos++];
-                    right = slot->streamScratch[slot->scratchPos++];
+                    slot->active = false;
+                    break;
                 }
-
-                s_mixAccum[s * 2]     += (left * gainQ12) >> 12;
-                s_mixAccum[s * 2 + 1] += (right * gainQ12) >> 12;
             }
-        } else {
-            /* Embedded SFX */
-            if (!slot->pcmData) continue;
 
-            /* Fixed point resampling ratio: (sampleRate * pitch) / 22050 */
-            uint32_t step = (uint32_t)(((uint64_t)slot->sampleRate * (uint32_t)(slot->pitch * 65536.0f)) / SF2000_AUDIO_RATE);
-            if (step == 0) step = 65536;
-
-            for (int s = 0; s < SAMPLES_PER_FRAME; s++) {
-                if (slot->samplePos >= slot->totalSamples) {
-                    if (slot->loop) {
-                        slot->samplePos = 0;
-                    } else {
-                        slot->active = false;
-                        break;
-                    }
-                }
-
-                int16_t left, right;
-                if (slot->channels == 1) {
-                    left = right = slot->pcmData[slot->samplePos];
-                } else {
-                    left  = slot->pcmData[slot->samplePos * 2];
-                    right = slot->pcmData[slot->samplePos * 2 + 1];
-                }
-
-                s_mixAccum[s * 2]     += (left * gainQ12) >> 12;
-                s_mixAccum[s * 2 + 1] += (right * gainQ12) >> 12;
-
-                slot->samplePosFrac += step;
-                slot->samplePos += (slot->samplePosFrac >> 16);
-                slot->samplePosFrac &= 0xFFFF;
+            int16_t left, right;
+            if (slot->channels == 1) {
+                left = right = slot->pcmData[slot->samplePos];
+            } else {
+                left  = slot->pcmData[slot->samplePos * 2];
+                right = slot->pcmData[slot->samplePos * 2 + 1];
             }
+
+            s_mixAccum[s * 2]     += (left * gainQ12) >> 12;
+            s_mixAccum[s * 2 + 1] += (right * gainQ12) >> 12;
+
+            slot->samplePosFrac += step;
+            slot->samplePos += (slot->samplePosFrac >> 16);
+            slot->samplePosFrac &= 0xFFFF;
         }
     }
 

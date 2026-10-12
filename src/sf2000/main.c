@@ -248,7 +248,7 @@ static void build_args(CommandLineArgs *args) {
     args->exitAtFrame = -1;
     args->speedMultiplier = 1.0;
     args->fastForwardSpeed = 0.0;
-    args->osType = OS_LINUX;
+    args->osType = OS_WINDOWS;
     args->profilerFramesBetween = 0;
 
     /*
@@ -334,6 +334,12 @@ int16_t sf2000_get_input_state(unsigned id) {
     }
     return 0;
 }
+
+void sf2000_shutdown(void) {
+    if (g_env_cb) {
+        g_env_cb(RETRO_ENVIRONMENT_SHUTDOWN, NULL);
+    }
+}
 void retro_set_controller_port_device(unsigned port, unsigned device) {
     (void)port; (void)device;
 }
@@ -412,9 +418,9 @@ void retro_run(void) {
 
         loop(args, LIBRARY_NAME);
 
-        hacker_loader_halt("STOP", "ENGINE LOOP RETURNED");
+        xlog("[bs] engine loop returned, shutting down to frontend\n");
+        shutdown_game();
         for (;;) {
-            hacker_loader_spin("HALT", "SYS HALTED");
             dly_tsk(100);
         }
     }

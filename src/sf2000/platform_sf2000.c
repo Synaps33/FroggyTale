@@ -149,6 +149,22 @@ bool platformHandleEvents(void) {
     bool btn_start  = ((pad & 0x0008) != 0) || (sf2000_get_input_state(RETRO_DEVICE_ID_JOYPAD_START) != 0);
     bool btn_select = ((pad & 0x0001) != 0) || (sf2000_get_input_state(RETRO_DEVICE_ID_JOYPAD_SELECT) != 0);
 
+    /* Hotkey: START + SELECT exits back to console frontend */
+    static int s_quit_hold_frames = 0;
+    if (btn_start && btn_select) {
+        s_quit_hold_frames++;
+        if (s_quit_hold_frames >= 10) { /* ~160ms hold */
+            xlog("[bs] START+SELECT held, exiting to frontend\n");
+            if (s_runner) {
+                s_runner->shouldExit = true;
+            }
+            sf2000_shutdown();
+            return true;
+        }
+    } else {
+        s_quit_hold_frames = 0;
+    }
+
     /* Ergonomic mapping tailored to the GB300 / SF2000 layout:
      * - CONFIRM / INTERACT / ADVANCE DIALOG: A, R (shoulder trigger), START
      * - CANCEL / RUN / SKIP TEXT: B, Y (thumb roll), L (shoulder run)

@@ -160,16 +160,28 @@ static char* overlayReadFileText(FileSystem* fs, const char* relativePath) {
     return content;
 }
 
+#ifdef PLATFORM_SF2000
+#include "sf2000/sf2000_fw.h"
+extern int fs_sync(const char *path);
+#endif
+
 static bool overlayWriteFileText(FileSystem* fs, const char* relativePath, const char* contents) {
     char* fullPath = resolveForWrite((OverlayFileSystem*) fs, relativePath);
     ensureParentDir(fullPath);
     FILE* f = fopen(fullPath, "wb");
-    free(fullPath);
-    if (f == nullptr) return false;
+    if (f == nullptr) {
+        free(fullPath);
+        return false;
+    }
 
     size_t len = strlen(contents);
     size_t written = fwrite(contents, 1, len, f);
+    fflush(f);
     fclose(f);
+#ifdef PLATFORM_SF2000
+    fs_sync(fullPath);
+#endif
+    free(fullPath);
     return written == len;
 }
 
@@ -212,11 +224,18 @@ static bool overlayWriteFileBinary(FileSystem* fs, const char* relativePath, con
     char* fullPath = resolveForWrite((OverlayFileSystem*) fs, relativePath);
     ensureParentDir(fullPath);
     FILE* f = fopen(fullPath, "wb");
-    free(fullPath);
-    if (f == nullptr) return false;
+    if (f == nullptr) {
+        free(fullPath);
+        return false;
+    }
 
     size_t written = fwrite(data, 1, (size_t) size, f);
+    fflush(f);
     fclose(f);
+#ifdef PLATFORM_SF2000
+    fs_sync(fullPath);
+#endif
+    free(fullPath);
     return written == (size_t) size;
 }
 
@@ -265,7 +284,15 @@ static void* overlayBinaryOpen(FileSystem* fs, const char* relativePath, int32_t
 static void overlayBinaryClose(MAYBE_UNUSED FileSystem* fs, void* handle) {
     if (handle == nullptr) return;
     OverlayBinaryHandle* h = (OverlayBinaryHandle*) handle;
-    if (h->fp != nullptr) fclose(h->fp);
+    if (h->fp != nullptr) {
+        fflush(h->fp);
+        fclose(h->fp);
+#ifdef PLATFORM_SF2000
+        if (h->fullPath != nullptr) {
+            fs_sync(h->fullPath);
+        }
+#endif
+    }
     free(h->fullPath);
     free(h);
 }
